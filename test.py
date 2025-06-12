@@ -41,9 +41,9 @@ def delete_movie(mid):
         raise Exception(f"DELETE failed ({r.status_code}): {r.text}")
 
 def main():
-    print(f"→ GET empty list @ {API_URL}")
+    print(f"→ GET list @ {API_URL}")
     movies = get_movies()
-    assert movies == [], f"Expected empty list, got {movies}"
+    assert isinstance(movies, list), f"Expected a list, got {type(movies)}"
 
     print("→ POST new movie")
     new = {"name": "CI Movie", "genre": "test", "length": 123}

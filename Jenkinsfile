@@ -27,22 +27,26 @@ pipeline {
         stage('Run Docker Container & Execute Python Tests') {
             steps {
                 script {
-                    // 1) Start the container detached, mapping host → container ports
+                    // 1) Start the container with workspace mounted
                     sh '''
                         docker run -d \
                           --name ${CONTAINER_NAME} \
+                          -v ${WORKSPACE}:/app \
                           -p ${HOST_PORT}:${CONTAINER_PORT} \
                           ${IMAGE_NAME}:${IMAGE_TAG}
                     '''
                     sh 'sleep 5'
 
-                    // 2) Install test dependencies on the Jenkins agent
-                    sh 'python3 -m pip install --no-cache-dir requests python-dotenv'
-
-                    // 3) Run Python test suite against the mapped host port
+                    // 2) Install test dependencies inside the container
                     sh '''
-                        export URL="http://localhost:${HOST_PORT}/movie" && \
-                        python3 test.py
+                        docker exec ${CONTAINER_NAME} \
+                          python -m pip install --no-cache-dir requests python-dotenv
+                    '''
+
+                    // 3) Run the unified test suite inside the container
+                    sh '''
+                        docker exec -e URL="http://localhost:${CONTAINER_PORT}/movie" ${CONTAINER_NAME} \
+                          python /app/test.py
                     '''
                 }
             }
@@ -52,13 +56,13 @@ pipeline {
     post {
         always {
             script {
-                // Tear down the container and image
+                // Tear down container and image
                 sh "docker rm -f ${CONTAINER_NAME} || true"
                 sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
         success {
-            echo "Agent-side tests passed for ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "Tests inside container passed for ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
             echo "Tests failed; see logs for details."
