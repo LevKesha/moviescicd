@@ -1,5 +1,5 @@
 import requests
-import environ
+import git rm -r --cached .venv .ideaenviron
 import os
 env = environ.Env()
 
