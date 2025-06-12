@@ -39,7 +39,7 @@ pipeline {
                     sh 'sleep 5'
 
                     // 2) Install test dependencies on the Jenkins agent
-                    sh 'pip install --no-cache-dir -r requirements.txt requests python-dotenv'
+                    sh 'pip install -m --no-cache-dir -r requirements.txt requests python-dotenv'
 
                     // 3) Run the unified Python test suite
                     sh 'python test.py'
