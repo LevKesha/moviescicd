@@ -1,2 +1,2 @@
 requests~=2.32.4
-environ~=1.0
+django-environ~=1.0
