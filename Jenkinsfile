@@ -36,13 +36,14 @@ pipeline {
                     '''
                     sh 'sleep 5'
 
-                    // 2) Exec into container to run tests (requires test.py and deps baked into image)
-                    sh '''
-                        docker exec ${CONTAINER_NAME} \
-                          python /app/test.py
-                    '''
+                    // 2) Install test dependencies on the Jenkins agent via python -m pip
+                    sh 'python3 -m pip install --no-cache-dir -r requirements.txt requests python-dotenv'
+
+                    // 3) Run the unified Python test suite locally against the container API
+                    sh 'python3 test.py'
                 }
             }
+        }
         }
     }
 
