@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, request
 
 app = Flask(__name__)
@@ -68,4 +70,5 @@ def delete_movie(id):
 
 
 
-app.run(port=605,host='0.0.0.0',use_reloader=True)
+#app.run(port=605,host='0.0.0.0',use_reloader=True)
+app.run(host='0.0.0.0', port=int(os.getenv('PORT', 605)), debug=True)
