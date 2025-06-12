@@ -1,9 +1,11 @@
 import requests
 import environ
+import os
+env = environ.Env()
 
 
-def get_movies(url):
-    res = requests.get(url)
+def get_movies(api_url):
+    res = requests.get(api_url)
     if 200 <= res.status_code < 400:
         return res.data
     else:
@@ -16,7 +18,7 @@ def add_new_movie(url, movie: dict):
 
 def check_movie_addtion(url):
     movie = {}
-    add_new_movie(url, movie=)
+    add_new_movie(url, movie="")
     movies = get_movies(url)
     for k, v in movies.items():
         if k == 'name':
@@ -24,4 +26,5 @@ def check_movie_addtion(url):
 
 
 if __name__ == '__main__':
-    url = environ.get.URL or 'localhost:80/movie'
+    url = env("URL", default="localhost:80/movie")
+    print(url)
