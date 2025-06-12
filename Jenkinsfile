@@ -43,9 +43,9 @@ pipeline {
                           python -m pip install --no-cache-dir requests python-dotenv
                     '''
 
-                    // 3) Execute tests inside container against local Flask
+                    // 3) Execute tests inside container against Flask on container port
                     sh '''
-                        docker exec ${CONTAINER_NAME} \
+                        docker exec -e URL="http://localhost:${CONTAINER_PORT}/movie" ${CONTAINER_NAME} \
                           python /app/test.py
                     '''
                 }
