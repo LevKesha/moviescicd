@@ -25,25 +25,24 @@ pipeline {
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Run Docker Container & Execute Python Tests') {
             steps {
                 script {
-                    // Start the container detached, mapping host 1993 → container 605
-                    sh """
+                    // 1) Start the container detached, mapping host 1993 → container 605
+                    sh '''
                         docker run -d \
                           --name ${CONTAINER_NAME} \
                           -p ${HOST_PORT}:${CONTAINER_PORT} \
                           ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    '''
                     // Give the service a moment to boot
                     sh 'sleep 5'
-                    // Smoke-test the GET /movie endpoint
-                    sh """
-                        if ! curl -f http://localhost:${HOST_PORT}/movie; then
-                            echo "API did not respond correctly on port ${HOST_PORT}"
-                            exit 1
-                        fi
-                    """
+
+                    // 2) Install test dependencies on the Jenkins agent
+                    sh 'pip install --no-cache-dir -r requirements.txt requests python-dotenv'
+
+                    // 3) Run the unified Python test suite
+                    sh 'python test.py'
                 }
             }
         }
@@ -58,10 +57,10 @@ pipeline {
             }
         }
         success {
-            echo "Build & run succeeded: ${IMAGE_NAME}:${IMAGE_TAG} on host port ${HOST_PORT}"
+            echo "All tests passed and image cleaned up: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo "Build or run failed; see above for details."
+            echo "Build, deploy or tests failed; see logs for details."
         }
     }
 }
