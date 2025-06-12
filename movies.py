@@ -68,4 +68,4 @@ def delete_movie(id):
 
 
 
-app.run(port=80,host='0.0.0.0',use_reloader=True)
+app.run(port=605,host='0.0.0.0',use_reloader=True)
