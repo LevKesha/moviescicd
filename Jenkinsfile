@@ -27,22 +27,30 @@ pipeline {
         stage('Run Docker Container & Execute Python Tests') {
             steps {
                 script {
-                    // 1) Start the container
+                    // 1) Start the container, mounting workspace so tests available
                     sh '''
                         docker run -d \
                           --name ${CONTAINER_NAME} \
+                          -v ${WORKSPACE}:/app \
                           -p ${HOST_PORT}:${CONTAINER_PORT} \
                           ${IMAGE_NAME}:${IMAGE_TAG}
                     '''
                     sh 'sleep 5'
 
-                    // 2) Install test dependencies on the Jenkins agent via python -m pip
-                    sh 'python3 -m pip install --no-cache-dir -r requirements.txt requests python-dotenv'
+                    // 2) Install test deps inside container
+                    sh '''
+                        docker exec ${CONTAINER_NAME} \
+                          python -m pip install --no-cache-dir requests python-dotenv
+                    '''
 
-                    // 3) Run the unified Python test suite locally against the container API
-                    sh 'python3 test.py'
+                    // 3) Execute tests inside container against local Flask
+                    sh '''
+                        docker exec ${CONTAINER_NAME} \
+                          python /app/test.py
+                    '''
                 }
             }
+        }
         }
     }
 
