@@ -4,9 +4,9 @@ import sys
 import requests
 from dotenv import load_dotenv
 
-# Load .env if present, then fallback defaults
+# Load environment variables from .env if present
 load_dotenv()
-API_URL = os.getenv("URL", "http://localhost:1993/movie")
+API_URL = os.getenv("URL", "http://localhost:605/movie")
 
 def get_movies():
     r = requests.get(API_URL)
@@ -15,9 +15,17 @@ def get_movies():
 
 def add_movie(payload):
     r = requests.post(API_URL, json=payload)
-    if r.status_code != 201:
+    # Our API returns the full movie list with a 200 status on POST
+    if r.status_code != 200:
         raise Exception(f"POST failed ({r.status_code}): {r.text}")
-    return r.json()
+    movies = r.json()
+    # The newly added movie should be the last element
+    new = movies[-1]
+    if new.get("name") != payload.get("name"):
+        raise Exception(
+            f"Last movie name mismatch: expected {payload['name']}, got {new.get('name')}"
+        )
+    return new
 
 def get_movie_by_id(mid):
     url = f"{API_URL}/{mid}"
@@ -41,31 +49,31 @@ def delete_movie(mid):
         raise Exception(f"DELETE failed ({r.status_code}): {r.text}")
 
 def main():
-    print(f"→ GET list @ {API_URL}")
+    print(f"→ GET movie list @ {API_URL}")
     movies = get_movies()
-    assert isinstance(movies, list), f"Expected a list, got {type(movies)}"
+    assert isinstance(movies, list), f"Expected list, got {type(movies)}"
 
     print("→ POST new movie")
-    new = {"name": "CI Movie", "genre": "test", "length": 123}
-    created = add_movie(new)
-    mid = created["id"]
-    assert created["name"] == new["name"]
+    new_payload = {"name": "CI Movie", "genre": "test", "length": 123}
+    created = add_movie(new_payload)
+    mid = created.get("id")
+    assert created.get("name") == new_payload["name"], "POSTed movie name mismatch"
 
-    print(f"→ GET /{mid}")
+    print(f"→ GET /movie/{mid}")
     fetched = get_movie_by_id(mid)
-    assert fetched and fetched["id"] == mid
+    assert fetched and fetched.get("id") == mid, "GET by ID failed"
 
-    print(f"→ PUT /{mid}")
-    updated = update_movie(mid, {"name": "CI Movie X"})
-    assert updated["name"] == "CI Movie X"
+    print(f"→ PUT /movie/{mid}")
+    updated = update_movie(mid, {"name": "CI Movie Updated"})
+    assert updated.get("name") == "CI Movie Updated", "PUT did not update name"
 
-    print(f"→ DELETE /{mid}")
+    print(f"→ DELETE /movie/{mid}")
     delete_movie(mid)
 
-    print(f"→ GET deleted /{mid} (should 404)")
-    assert get_movie_by_id(mid) is None
+    print(f"→ GET deleted /movie/{mid} (should 404)")
+    assert get_movie_by_id(mid) is None, "Deleted movie still found"
 
-    print("All tests passed.")
+    print("✔ All tests passed.")
     return 0
 
 if __name__ == "__main__":
