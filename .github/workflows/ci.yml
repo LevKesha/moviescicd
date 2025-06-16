@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]          # or whichever branches you want
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest      # GitHub-hosted runner with Docker pre-installed
+    env:
+      IMAGE_NAME: movies-api
+      IMAGE_TAG: ${{ github.run_id }}
+      CONTAINER_NAME: movies-api-${{ github.run_id }}
+      CONTAINER_PORT: "605"
+      HOST_PORT: "1993"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # Build the Docker image (same as in Jenkins)
+      - name: Build image
+        run: |
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+      # Run the container in detached mode
+      - name: Start container
+        run: |
+          docker run -d \
+            --name $CONTAINER_NAME \
+            -v ${{ github.workspace }}:/app \
+            -p $HOST_PORT:$CONTAINER_PORT \
+            $IMAGE_NAME:$IMAGE_TAG
+          # Give Flask a couple seconds to start
+          sleep 5
+
+      # Install test-only requirements inside the container
+      - name: Install test deps inside container
+        run: |
+          docker exec $CONTAINER_NAME \
+            python -m pip install --no-cache-dir requests python-dotenv
+
+      # Run the unified test suite
+      - name: Run tests
+        run: |
+          docker exec -e URL="http://localhost:$CONTAINER_PORT/movie" \
+            $CONTAINER_NAME python /app/test.py
+
+      # Always tear everything down
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f $CONTAINER_NAME || true
+          docker rmi $IMAGE_NAME:$IMAGE_TAG || true
