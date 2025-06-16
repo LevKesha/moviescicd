@@ -1,9 +1,13 @@
 # .github/workflows/ci.yml  (only the relevant parts shown)
+name: CI
+
+on:          # <-- required
+  push:      # run on every push to any branch
+  pull_request:   # and on every PR
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
