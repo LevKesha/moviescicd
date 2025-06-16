@@ -8,46 +8,69 @@ from dotenv import load_dotenv
 load_dotenv()
 API_URL = os.getenv("URL", "http://localhost:605/movie")
 
+
+# ---------- helper ---------- #
+def _json_or_raise(resp: requests.Response):
+    """
+    Return resp.json() iff the response is successful **and**
+    declares a JSON content-type. Otherwise raise with a clear message.
+    """
+    if resp.status_code >= 400:
+        raise Exception(
+            f"{resp.request.method} {resp.url} → {resp.status_code}:\n{resp.text}"
+        )
+
+    ctype = resp.headers.get("Content-Type", "")
+    if "application/json" not in ctype.lower():
+        snippet = resp.text[:300].replace("\n", " ")
+        raise Exception(
+            f"Expected JSON but got '{ctype}'. Body (truncated): {snippet}"
+        )
+
+    return resp.json()
+
+
+# ---------- API wrappers ---------- #
 def get_movies():
     r = requests.get(API_URL)
-    r.raise_for_status()
-    return r.json()
+    return _json_or_raise(r)
+
 
 def add_movie(payload):
     r = requests.post(API_URL, json=payload)
-    # Our API returns the full movie list with a 200 status on POST
-    if r.status_code != 200:
-        raise Exception(f"POST failed ({r.status_code}): {r.text}")
-    movies = r.json()
-    # The newly added movie should be the last element
-    new = movies[-1]
+    movies = _json_or_raise(r)          # also checks 2xx
+    new = movies[-1]                    # last element should be the new movie
     if new.get("name") != payload.get("name"):
         raise Exception(
             f"Last movie name mismatch: expected {payload['name']}, got {new.get('name')}"
         )
     return new
 
+
 def get_movie_by_id(mid):
     url = f"{API_URL}/{mid}"
     r = requests.get(url)
     if r.status_code == 404:
         return None
-    r.raise_for_status()
-    return r.json()
+    return _json_or_raise(r)
+
 
 def update_movie(mid, payload):
     url = f"{API_URL}/{mid}"
     r = requests.put(url, json=payload)
-    if r.status_code != 200:
-        raise Exception(f"PUT failed ({r.status_code}): {r.text}")
-    return r.json()
+    return _json_or_raise(r)
+
 
 def delete_movie(mid):
     url = f"{API_URL}/{mid}"
     r = requests.delete(url)
     if r.status_code != 204:
-        raise Exception(f"DELETE failed ({r.status_code}): {r.text}")
+        raise Exception(
+            f"DELETE failed ({r.status_code}): {r.text}"
+        )
 
+
+# ---------- test flow ---------- #
 def main():
     print(f"→ GET movie list @ {API_URL}")
     movies = get_movies()
@@ -75,6 +98,7 @@ def main():
 
     print("✔ All tests passed.")
     return 0
+
 
 if __name__ == "__main__":
     try:
