@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # copy the application code
 COPY movies.py .
 
+# copy the test deps
+COPY test.py .
+
 # the Flask app listens on 605 (default in movies.py)
 EXPOSE 605
 
