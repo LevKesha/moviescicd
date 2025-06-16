@@ -1,74 +1,70 @@
 import os
-
-from flask import Flask, request
+from flask import Flask, request, jsonify, abort
 
 app = Flask(__name__)
-#hello world
+
 movies = [
-    {"id": 1, "name": 'spider man 3', 'length': 139, 'genre': 'sci-fi'},
-    {"id": 2, "name": 'undisputed', 'length': 110, 'genre': 'action'},
+    {"id": 1, "name": "spider man 3", "length": 139, "genre": "sci-fi"},
+    {"id": 2, "name": "undisputed",    "length": 110, "genre": "action"},
 ]
 
-# GET -> return all the movies
-@app.get('/movie')
+# -------- HELPER -------- #
+def _find_movie(idx):
+    return next((m for m in movies if m["id"] == idx), None)
+
+# -------- ROUTES -------- #
+@app.get("/movie")
 def get_all_movies():
-    '''
-    this function return all the movies
-    '''
-    return movies
+    """Return full list."""
+    return jsonify(movies), 200
 
 
-# GET /id -> return one movie
-@app.get('/movie/<int:id>')
-def get_movie(id):
-    '''
-    :param id:  movie id
-    :return: the movie dict
-    '''
-    for movie in movies:
-        if movie['id'] == id:
-            return movie
-    return 'data not found', 400  # return message/data , status code
+@app.get("/movie/<int:mid>")
+def get_movie(mid):
+    movie = _find_movie(mid)
+    if movie:
+        return jsonify(movie), 200
+    return "", 404
 
 
-# POST -> add movie to the list
-
-@app.post('/movie')
+@app.post("/movie")
 def add_movie():
-    movie = request.json  # takes the body and convert the json to dict
-    movie['id'] = movies[-1]['id'] + 1
-    # validation
+    movie = request.get_json(force=True) or {}
+    movie["id"] = (movies[-1]["id"] + 1) if movies else 1
     movies.append(movie)
-    return movies
+    return jsonify(movies), 200
 
 
-# put -> change movie
-@app.put('/movie/<int:id>')
-def change_movie(id):
-    new_movie = request.json  # take the new movie from the body of the request
-    for i in range(len(movies)):  # iterate over all the movies indexes
-        if movies[i]['id'] == id:  # if the id of the movie matches the param id
-            movies.pop(i)  # remove the old movie
-            movies.insert(i, new_movie)  # add new movie
-    return 'DoDO'
+@app.put("/movie/<int:mid>")
+def change_movie(mid):
+    movie = _find_movie(mid)
+    if not movie:
+        return "", 404
+
+    new_data = request.get_json(force=True) or {}
+    # keep the original id if client didn't send one
+    new_data["id"] = mid
+    movies[movies.index(movie)] = new_data
+    return jsonify(new_data), 200
 
 
-# delete -> remove all the movies
-@app.delete('/movie')
+@app.delete("/movie/<int:mid>")
+def delete_movie(mid):
+    movie = _find_movie(mid)
+    if not movie:
+        return "", 404
+
+    movies.remove(movie)
+    return "", 204
+
+
+# Optional: wipe all movies (not used in CI tests)
+@app.delete("/movie")
 def delete_all_movies():
     movies.clear()
-    return movies
+    return "", 204
 
 
-# delete /id -> delete one movie
-@app.delete('/movie/<int:id>')
-def delete_movie(id):
-    for movie in movies:
-        if movie['id'] == id:
-            movies.remove(movie)
-    return 'Done'
-
-
-
-#app.run(port=605,host='0.0.0.0',use_reloader=True)
-app.run(host='0.0.0.0', port=int(os.getenv('PORT', 605)), debug=True)
+if __name__ == "__main__":
+    # honour $PORT (default 605) for CI
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 605)), debug=True)
