@@ -1,55 +1,40 @@
-name: CI
-
-on:
-  push:
-    branches: [ main ]          # or whichever branches you want
-  pull_request:
+# .github/workflows/ci.yml  (only the relevant parts shown)
 
 jobs:
   test:
-    runs-on: ubuntu-latest      # GitHub-hosted runner with Docker pre-installed
-    env:
-      IMAGE_NAME: movies-api
-      IMAGE_TAG: ${{ github.run_id }}
-      CONTAINER_NAME: movies-api-${{ github.run_id }}
-      CONTAINER_PORT: "605"
-      HOST_PORT: "1993"
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Build the Docker image (same as in Jenkins)
-      - name: Build image
-        run: |
-          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+      # 1. Enable Buildx (needed for the cache backend)
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3   # <-- new step
 
-      # Run the container in detached mode
+      # 2. Build the image **with caching** and load it locally
+      - name: Build (cache layers)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          tags: movies-api:${{ github.sha }}
+          load: true                       # we only need the image locally
+          cache-from: type=gha,scope=movies-api
+          cache-to: type=gha,mode=max,scope=movies-api
+
+      # 3. Start container, install test deps, run test.py … (unchanged)
       - name: Start container
         run: |
           docker run -d \
-            --name $CONTAINER_NAME \
-            -v ${{ github.workspace }}:/app \
-            -p $HOST_PORT:$CONTAINER_PORT \
-            $IMAGE_NAME:$IMAGE_TAG
-          # Give Flask a couple seconds to start
+            --name movies-api \
+            -p 1993:605 \
+            movies-api:${{ github.sha }}
           sleep 5
-
-      # Install test-only requirements inside the container
-      - name: Install test deps inside container
+      - name: Install test deps
         run: |
-          docker exec $CONTAINER_NAME \
+          docker exec movies-api \
             python -m pip install --no-cache-dir requests python-dotenv
-
-      # Run the unified test suite
       - name: Run tests
         run: |
-          docker exec -e URL="http://localhost:$CONTAINER_PORT/movie" \
-            $CONTAINER_NAME python /app/test.py
-
-      # Always tear everything down
-      - name: Cleanup
-        if: always()
-        run: |
-          docker rm -f $CONTAINER_NAME || true
-          docker rmi $IMAGE_NAME:$IMAGE_TAG || true
+          docker exec -e URL="http://localhost:605/movie" \
+            movies-api python /app/test.py
