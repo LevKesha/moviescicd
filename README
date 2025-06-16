@@ -134,3 +134,12 @@ Status badge (add to the top if you like):
 
 This project is released under the **MIT License** – see `LICENSE` if/when one
 has been added.
+
+---
+
+### How to use
+
+1. Copy the block above into README.md at the repo root.
+2. Push to GitHub – the badge should turn green on the next run.
+
+Let me know if you’d like extra sections (e.g., deployment to AWS ECS, Swagger docs, etc.) or stylistic tweaks!
