@@ -1,0 +1,136 @@
+
+# Movies CI CD 📽️ 🚀
+
+A tiny Flask REST API for managing an in-memory movie list – wrapped in Docker, fully
+tested in both **Jenkins** and **GitHub Actions**.
+The project was built as a learning playground for containerised CI/CD pipelines.
+
+---
+
+## Table of Contents
+1. [Features]
+2. [Quick Start]
+3. [API Reference]
+4. [Development & Testing]
+5. [CI Pipelines]
+6. [Project Structure]
+7. [License]
+
+---
+
+## Features
+* **Flask 3 API** – serves `/movie` CRUD endpoints on port `605` by default.
+* **Single-file Docker build** – Python 3.11 base, only one `requirements.txt`.
+* **Comprehensive test suite** (`test.py`) that exercises every route and validates JSON responses & status codes.
+* **Jenkinsfile** for classic on-prem Jenkins runners.
+* **GitHub Actions** workflow (see `.github/workflows/ci.yml`) with layer caching for faster rebuilds.
+* Zero external services – data is stored in-memory, so the container is 100 % stateless.
+
+---
+
+## Quick Start
+
+### 1 · Run with Docker
+
+```bash
+# clone repository
+git clone https://github.com/LevKesha/moviescicd.git
+cd moviescicd
+
+# build image (tag optional)
+docker build -t movies-api:local .
+
+# launch on host port 1993 → container port 605
+docker run -d -p 1993:605 --name movies movies-api:local
+```
+
+Now visit <http://localhost:1993/movie> to see the initial movie list.
+
+### 2 · Run the tests locally
+
+```bash
+# inside the repo root, with the container already running
+pip install --upgrade -r requirements.txt python-dotenv requests
+URL=http://localhost:1993/movie python test.py
+```
+
+You should see ✔ All tests passed.
+
+---
+
+## API Reference
+
+| Verb | Endpoint | Description | Success Code |
+|------|----------|-------------|--------------|
+| GET  | `/movie` | List all movies | **200** |
+| GET  | `/movie/<id>` | Retrieve single movie | **200** (or **404** if not found) |
+| POST | `/movie` | Add new movie (JSON body) | **200** – returns full list incl. new item |
+| PUT  | `/movie/<id>` | Replace movie by ID | **200** |
+| DELETE | `/movie/<id>` | Delete movie by ID | **204** |
+
+All responses are JSON except `DELETE 204` which has an empty body.
+
+**Example Payload**
+
+```json
+{
+  "name": "Inception",
+  "genre": "sci-fi",
+  "length": 148
+}
+```
+
+---
+
+## Development & Testing
+
+| Task | Command |
+|------|---------|
+| Create virtual env | `python -m venv .venv && source .venv/bin/activate` |
+| Install deps | `pip install -r requirements.txt` (Flask 3, requests, dotenv) |
+| Run API locally | `python movies.py` (listens on 605) |
+| Run unit tests | `python test.py` |
+
+Environment variables are loaded from `.env` if present; only `PORT` and `URL`
+are supported.
+
+---
+
+## CI Pipelines
+
+### Jenkins
+
+The **Jenkinsfile** builds an image (`movies-api:$BUILD_ID`), spins up a container,
+runs `test.py` inside it, and always tears everything down.
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` mirrors the Jenkins steps and additionally caches
+Docker layers via the GitHub Actions cache backend, shaving minutes off rebuilds.
+
+Status badge (add to the top if you like):
+
+```markdown
+![CI](https://github.com/LevKesha/moviescicd/actions/workflows/ci.yml/badge.svg)
+```
+
+---
+
+## Project Structure
+
+```
+.
+├── .github/workflows/ci.yml   # GitHub Actions pipeline (build + test + cache)
+├── Dockerfile                 # Build definition
+├── Jenkinsfile                # Declarative Jenkins pipeline
+├── movies.py                  # Flask application & routes
+├── requirements.txt           # Runtime dependencies
+└── test.py                    # Self-contained integration test suite
+```
+
+---
+
+## License
+
+This project is released under the **MIT License** – see `LICENSE` if/when one
+has been added.
