@@ -1,16 +1,16 @@
-# Use the standard Python 3.11 image
+# Dockerfile
 FROM python:3.11
 
-# Set working directory
 WORKDIR /app
 
-# Copy and install dependencies
+# install app-level dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code
+# copy the application code
 COPY movies.py .
 
-# Expose port 80 and run
-EXPOSE 80
+# the Flask app listens on 605 (default in movies.py)
+EXPOSE 605
+
 CMD ["python", "movies.py"]
